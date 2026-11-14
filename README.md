@@ -6,7 +6,7 @@ HealthVault is a responsive healthcare dashboard for managing reports, prescript
 
 ## Stack and full-stack architecture
 
-- **Editor:** Visual Studio Code (VS Code); project includes `.vscode/tasks.json`.
+- **Editor:** Visual Studio Code (VS Code).
 - **Frontend:** React 18, Vite 6, JavaScript, responsive CSS, Lucide icons.
 - **Backend services (BaaS):** Firebase Authentication + Cloud Firestore (documents and files) + Firebase Security Rules, all on the free Spark plan. No separate Express/Flask server is necessary for this scope.
 - **Cloud hosting:** Vercel (static React SPA).
@@ -33,17 +33,18 @@ Login / roles      Appointments, metadata, shares,
 6. Two roles defined by permissions: **patient owner** and **verified recipient**. No public document links are required.
 7. Firestore real-time snapshots for lists, Vercel setup and sample data.
 
-## A. OPEN IN VS CODE — DEMO (NO FIREBASE ACCOUNT NEEDED)
+## A. RUN LOCALLY IN VS CODE — DEMO (NO FIREBASE ACCOUNT NEEDED)
 
 ### 1. Install prerequisites
 
 - Install **Node.js 20 or newer** from https://nodejs.org/ (includes npm).
 - Install **Visual Studio Code** from https://code.visualstudio.com/.
+- Install **Git** from https://git-scm.com/downloads.
 
 ### 2. Open the project
 
-1. Extract `HealthVault-CCSA.zip`.
-2. VS Code → **File → Open Folder** → select `HealthVault-CCSA`.
+1. Clone the repository: `git clone https://github.com/Mansi114114/HealthVault.git`
+2. VS Code → **File → Open Folder** → select the `HealthVault` folder.
 3. Open **Terminal → New Terminal**.
 
 ### 3. Run the following commands
@@ -105,28 +106,28 @@ firebase deploy --only firestore:rules
 
 The CLI command uses `firebase.json` and `firestore.rules`. Review the rules before deploying.
 
-
 7. Restart `npm run dev` after editing `.env`. Create an account and click the verification link received in email before testing **received** shares. To create a share, sign in as one user, upload a sample PDF, share with another verified Firebase user email, log in as that recipient, and open it from **Sharing → Documents shared with me**.
 
 ## C. DEPLOY TO VERCEL
 
-1. Create a GitHub repository and push this **source folder**. Do not commit `.env` or credentials.
+1. Push this repository to GitHub. Do not commit `.env` or credentials.
 2. Go to https://vercel.com/ → **Add New Project** → import your GitHub repo.
 3. Framework should be **Vite**. Set Build Command `npm run build` and Output Directory `dist`.
-4. In Vercel Environment Variables, add **exactly** the `VITE_...` values used in `.env` above, including `VITE_DEMO_MODE=false` for real Firebase.
+4. In Vercel Environment Variables:
+   - **Demo deployment:** add `VITE_DEMO_MODE=true`.
+   - **Real Firebase:** add **exactly** the `VITE_...` values used in `.env` above, including `VITE_DEMO_MODE=false`.
 5. Deploy and copy the `https://...vercel.app` live link.
-6. Firebase Console → Authentication → Settings → Authorized domains: add the Vercel domain.
-7. **Re-deploy** if environment variables change. Test on the actual live link using two verified test accounts.
+6. For real Firebase only: Firebase Console → Authentication → Settings → Authorized domains: add the Vercel domain.
+7. **Re-deploy** if environment variables change (Vite reads them at build time). Test on the actual live link using two verified test accounts.
 
 Vercel SPA rewrites are included in `vercel.json` (the app's navigation uses URL hashes, so deep links also remain reliable).
 
-**Cost warning:** Vercel and Firebase service quotas/limits may change. Set a Firebase Cloud Billing budget; the live link is not created by this ZIP. You must deploy it from your own account.
+**Cost warning:** Vercel and Firebase service quotas/limits may change. Set a Firebase Cloud Billing budget if you use real Firebase mode.
 
 ## D. PROJECT STRUCTURE
 
 ```
-HealthVault-CCSA/
-├── .vscode/                   # VS Code launch tasks and suggestions
+HealthVault/
 ├── public/samples/            # Four fictional PDF reports
 ├── src/
 │   ├── components/            # Shared UI, sidebar, document viewer
@@ -138,7 +139,6 @@ HealthVault-CCSA/
 │   ├── main.jsx               # React app entry point
 │   └── styles.css             # Responsive teal design system
 ├── tests/                     # Node.js built-in unit tests
-├── docs/                      # Architecture notes + reference screens
 ├── firestore.rules            # Firestore authorization (documents + file chunks)
 ├── firebase.json              # Firebase CLI config
 ├── vercel.json                # Static hosting rewrite + security headers
@@ -158,19 +158,15 @@ HealthVault-CCSA/
 - **File size:** files are stored in Firestore, so each is limited to 5 MB. For larger files, move to a dedicated object store.
 - **Not production medical software:** It does not provide HIPAA/GDPR/DPDP compliance assurance, clinical verification, virus scanning, detailed clinician onboarding, or a formal consent/audit system.
 
-See `docs/ARCHITECTURE.md` for the architecture overview.
-
 ## F. TROUBLESHOOTING
 
 | Error | Solution |
 |---|---|
 | `npm` not recognized | Install Node.js 20+ and reopen VS Code. |
-| `Missing script dev` | Terminal must be in the `HealthVault-CCSA` directory. |
+| `Missing script dev` | Terminal must be in the project folder (the one containing `package.json`). |
 | Firebase `auth/operation-not-allowed` | Enable Email/Password in Firebase Authentication. |
 | Firebase `permission-denied` | Deploy supplied Firestore rules, verify correct project ID/account. |
 | File won't open | Deploy the latest `firestore.rules` (they include the file-chunk rules) and check the file is under 5 MB. |
 | Share invisible to doctor | Verify doctor email, refresh session, check exact matching email address. |
-| Blank page on deployed Vercel site | Add `VITE_` environment variables in Vercel and redeploy. |
+| Deployed Vercel site shows the yellow "DEMO MODE" banner | The `VITE_` variables are missing or incomplete, so the app fell back to demo mode. Add all of them in Vercel and redeploy. |
 | Demo upload not opening | Demo files are stored in the browser's IndexedDB; try the same browser/profile. |
-
-
