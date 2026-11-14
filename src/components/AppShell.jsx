@@ -35,7 +35,7 @@ export default function AppShell({ path, navigate, children }) {
         </div>}
       </div></header>
       <main className="page-content">{children}</main>
-      <footer className="app-footer">HealthVault · Cloud-Based Full-Stack CCSA Project <span>For education and demonstration only</span></footer>
+      <footer className="app-footer"> HealthVault · Your health, organized and in your control.<span>For education and demonstration only</span></footer>
     </div>
   </div>;
 }

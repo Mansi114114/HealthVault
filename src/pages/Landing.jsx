@@ -55,6 +55,6 @@ export default function Landing({ navigate, onTryDemo }) {
       <Button onClick={() => navigate('/auth/signup')}>Create your vault <ArrowRight size={16}/></Button>
       {onTryDemo && <button className="text-light-link" onClick={onTryDemo}>Or explore with sample data</button>}
     </section>
-    <footer className="landing-footer"><div className="content-container"><Logo inverse/><p>HealthVault organizes your records and does not provide medical advice. In an emergency, contact local emergency services.</p><p>© 2026 HealthVault · Academic CCSA project · Privacy by design</p></div></footer>
+    <footer className="landing-footer"><div className="content-container"><Logo inverse/><p>HealthVault organizes your records and does not provide medical advice. In an emergency, contact local emergency services.</p><p>© 2026 HealthVault · Privacy by design</p></div></footer>
   </div>;
 }
