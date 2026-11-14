@@ -3,7 +3,7 @@ import { ArrowUpRight, Check, Clock3, Copy, Eye, FileText, Link2, LockKeyhole, R
 import { Badge, Button, EmptyState, FormField, FormMessage, useSubmit } from '../components/UI';
 import RecordViewer from '../components/RecordViewer';
 import { useApp } from '../context/AppContext';
-import { formatDate, getTime, isShareActive, sortNewest } from '../lib/validators';
+import { formatDate, getTime, isShareActive, normalizeEmail, sortNewest } from '../lib/validators';
 
 export default function Sharing() {
   const { user, data, actions, demoMode } = useApp();
@@ -18,7 +18,7 @@ export default function Sharing() {
   const form = useSubmit();
   const ownedRecords = data.records.filter((r)=>r.ownerUid===user.uid);
   const ownedShares = useMemo(() => data.shares.filter((s)=>s.ownerUid===user.uid), [data.shares,user.uid]);
-  const receivedShares = data.shares.filter((s)=>s.recipientEmail===user.email && s.ownerUid!==user.uid);
+  const receivedShares = data.shares.filter((s)=>normalizeEmail(s.recipientEmail)===normalizeEmail(user.email) && s.ownerUid!==user.uid);
   const idKey = ownedShares.map((s)=>s.id).sort().join('|');
   const refreshLogs = async () => {
     setRefreshing(true); setAuditError('');
