@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function owner(data) { return signedIn() && data.ownerUid == request.auth.uid; }
+    function verifiedEmail() {
+      return signedIn() && request.auth.token.email_verified == true && request.auth.token.email is string;
+    }
+    function isRecipient(data) {
+      return verifiedEmail() && data.recipientEmail == request.auth.token.email;
+    }
+    function validRecordShare(data) {
+      return owner(get(/databases/$(database)/documents/records/$(data.recordId)).data);
+    }
+    // A recipient may read file chunks only while an exact, unrevoked, unexpired share exists.
+    function validRecipientGrant(ownerUid, recordId) {
+      let grantId = ownerUid + '--' + recordId + '--' + request.auth.token.email;
+      let grantPath = /databases/$(database)/documents/shares/$(grantId);
+      return verifiedEmail() && exists(grantPath) &&
+        get(grantPath).data.ownerUid == ownerUid &&
+        get(grantPath).data.recordId == recordId &&
+        get(grantPath).data.recipientEmail == request.auth.token.email &&
+        get(grantPath).data.revoked == false &&
+        get(grantPath).data.expiresAt > request.time;
+    }
+    function validOwnerFields() {
+      return request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if signedIn() && request.auth.uid == userId &&
+        request.resource.data.email == request.auth.token.email;
+      allow update: if signedIn() && request.auth.uid == userId &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
+      allow delete: if false;
+    }
+
+    match /records/{recordId} {
+      allow get, list: if owner(resource.data);
+      allow create: if signedIn() && validOwnerFields() &&
+        request.resource.data.storagePath == 'firestore:' + recordId &&
+        request.resource.data.category is string && request.resource.data.title is string &&
+        request.resource.data.mimeType in ['application/pdf', 'image/png', 'image/jpeg'] &&
+        request.resource.data.size is number && request.resource.data.size <= 5 * 1024 * 1024 &&
+        request.resource.data.chunkCount is int && request.resource.data.chunkCount >= 1 &&
+        request.resource.data.chunkCount <= 8;
+      allow update: if owner(resource.data) &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.storagePath == resource.data.storagePath &&
+        request.resource.data.fileName == resource.data.fileName;
+      allow delete: if owner(resource.data);
+
+      // File content, split into chunks under the 1 MiB Firestore document limit.
+      match /chunks/{chunkId} {
+        allow get: if signedIn() &&
+          (resource.data.ownerUid == request.auth.uid || validRecipientGrant(resource.data.ownerUid, recordId));
+        allow list: if false;
+        allow create: if signedIn() &&
+          request.resource.data.keys().hasOnly(['ownerUid', 'index', 'data']) &&
+          request.resource.data.ownerUid == request.auth.uid &&
+          request.resource.data.index is int && request.resource.data.index >= 0 && request.resource.data.index < 8 &&
+          chunkId.matches('[0-7]') &&
+          request.resource.data.data is bytes && request.resource.data.data.size() <= 720000;
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      }
+    }
+
+    match /prescriptions/{prescriptionId} {
+      allow get, list: if owner(resource.data);
+      allow create: if signedIn() && validOwnerFields();
+      allow update: if owner(resource.data) && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if owner(resource.data);
+    }
+
+    match /appointments/{appointmentId} {
+      allow get, list: if owner(resource.data);
+      allow create: if signedIn() && validOwnerFields();
+      allow update: if owner(resource.data) && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if owner(resource.data);
+    }
+
+    // ID is deterministic so chunk rules can find exactly one grant.
+    // Example: OWNERUID--RECORDID--doctor@example.com
+    match /shares/{shareId} {
+      allow get, list: if owner(resource.data) || isRecipient(resource.data);
+      allow create: if signedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.recordId is string &&
+        request.resource.data.recipientEmail is string &&
+        request.resource.data.recipientEmail.size() > 3 &&
+        request.resource.data.revoked == false &&
+        request.resource.data.expiresAt > request.time &&
+        request.resource.data.expiresAt <= request.time + duration.value(31, 'd') &&
+        shareId == request.auth.uid + '--' + request.resource.data.recordId + '--' + request.resource.data.recipientEmail &&
+        validRecordShare(request.resource.data);
+      allow update: if owner(resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked', 'expiresAt']) &&
+        request.resource.data.expiresAt <= request.time + duration.value(31, 'd');
+      allow delete: if false; // revoke instead, preserve audit history
+
+      match /views/{viewId} {
+        function share() { return get(/databases/$(database)/documents/shares/$(shareId)).data; }
+        allow get, list: if owner(share()) || isRecipient(share());
+        allow create: if isRecipient(share()) &&
+          share().revoked == false && share().expiresAt > request.time &&
+          request.resource.data.readerUid == request.auth.uid &&
+          request.resource.data.viewedAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /{everything=**} { allow read, write: if false; }
+  }
+}
