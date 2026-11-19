@@ -106,6 +106,10 @@ firebase deploy --only firestore:rules
 
 The CLI command uses `firebase.json` and `firestore.rules`. Review the rules before deploying.
 
+### Role-based workspaces
+
+During signup, choose **Patient** or **Doctor** as the account workspace. The choice is stored in `users/{uid}.role` and determines which dashboard and navigation the account sees. Doctors only see records that patients have explicitly shared with their verified email; patient record, prescription and appointment pages are unavailable in the doctor workspace. Existing accounts without a role default to patient; a project administrator can set their role in the Firebase console. Doctor workspace selection is not professional credential verification.
+
 7. Restart `npm run dev` after editing `.env`. Create an account and click the verification link received in email before testing **received** shares. To create a share, sign in as one user, upload a sample PDF, share with another verified Firebase user email, log in as that recipient, and open it from **Sharing → Documents shared with me**.
 
 ## C. DEPLOY TO VERCEL
@@ -121,6 +125,10 @@ The CLI command uses `firebase.json` and `firestore.rules`. Review the rules bef
 7. **Re-deploy** if environment variables change (Vite reads them at build time). Test on the actual live link using two verified test accounts.
 
 Vercel SPA rewrites are included in `vercel.json` (the app's navigation uses URL hashes, so deep links also remain reliable).
+
+## C2. DEPLOY TO FIREBASE HOSTING
+
+This repository also includes Firebase Hosting configuration. Sign in with the Firebase CLI, then run `firebase deploy --only hosting,firestore:rules`. The hosting predeploy step builds the app and publishes `dist/` to `https://healthvault-24cc5.web.app`. Keep `VITE_APP_URL` set to that public URL when building locally; deployed builds can use their own origin. Share links point to the HealthVault app and preserve the recipient's sign-in redirect before opening the shared record.
 
 **Cost warning:** Vercel and Firebase service quotas/limits may change. Set a Firebase Cloud Billing budget if you use real Firebase mode.
 

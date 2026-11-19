@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { CalendarDays, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, RotateCcw, Share2, ShieldCheck, Stethoscope, UserRound, X } from 'lucide-react';
+import { Activity, CalendarDays, ChevronDown, Clock3, FileText, LayoutDashboard, LogOut, Menu, RotateCcw, Share2, ShieldCheck, Stethoscope, UserRound, UsersRound, X } from 'lucide-react';
 import { Logo } from './UI';
 import { useApp } from '../context/AppContext';
 
-const navItems = [
+const patientNavItems = [
   { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/app/documents', label: 'Documents', icon: FileText },
   { path: '/app/prescriptions', label: 'Prescriptions', icon: Stethoscope },
   { path: '/app/appointments', label: 'Appointments', icon: CalendarDays },
   { path: '/app/sharing', label: 'Sharing', icon: Share2 },
 ];
+const doctorNavItems = [
+  { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/app/doctor/patients', label: 'Patient access', icon: UsersRound },
+  { path: '/app/sharing', label: 'Shared records', icon: Share2 },
+  { path: '/app/doctor/expiring', label: 'Expiring soon', icon: Clock3 },
+  { path: '/app/doctor/activity', label: 'Activity log', icon: Activity },
+];
 export default function AppShell({ path, navigate, children }) {
   const { user, demoMode, actions } = useApp();
+  const navItems = user?.role === 'doctor' ? doctorNavItems : patientNavItems;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileMenu, setProfileMenu] = useState(false);
   const change = (page) => { navigate(page); setMobileOpen(false); setProfileMenu(false); };
@@ -27,10 +35,10 @@ export default function AppShell({ path, navigate, children }) {
         <button className="sidebar-logout" onClick={async () => { await actions.signOut(); change('/'); }}><LogOut size={18}/> Log out</button>
       </div>
     </aside>
-    <div className="app-page"><header className="app-header"><div className="header-breadcrumb">My health workspace <span> / </span><strong>{navItems.find((item)=>item.path===path)?.label || 'Dashboard'}</strong></div>
+    <div className="app-page"><header className="app-header"><div className="header-breadcrumb">{user?.role === 'doctor' ? 'Care workspace' : 'My health workspace'} <span> / </span><strong>{navItems.find((item)=>item.path===path)?.label || 'Dashboard'}</strong></div>
       <div className="header-user-wrap"><button className="header-user" onClick={() => setProfileMenu((v)=>!v)}><span className="user-avatar"><UserRound size={17}/></span><span className="user-name">{user?.displayName || user?.email?.split('@')[0] || 'Account'}</span><ChevronDown size={15}/></button>
-        {profileMenu && <div className="profile-menu"><strong>{user?.displayName || 'HealthVault user'}</strong><small>{user?.email}</small>
-          {demoMode && <><div className="profile-menu-divider"/><button onClick={() => { actions.switchDemoRole(user?.role === 'doctor' ? 'patient' : 'doctor'); setProfileMenu(false); change('/app/sharing'); }}>Switch to {user?.role === 'doctor' ? 'patient' : 'doctor'} demo</button><button onClick={() => { actions.resetDemo(); setProfileMenu(false); }}><RotateCcw size={15}/> Reset sample data</button></>}
+        {profileMenu && <div className="profile-menu"><strong>{user?.displayName || 'HealthVault user'}</strong><small>{user?.email}</small><small className="role-label">{user?.role === 'doctor' ? 'Doctor workspace' : 'Patient workspace'}</small>
+          {demoMode && <><div className="profile-menu-divider"/><button onClick={() => { actions.switchDemoRole(user?.role === 'doctor' ? 'patient' : 'doctor'); setProfileMenu(false); change('/app/dashboard'); }}>Switch to {user?.role === 'doctor' ? 'patient' : 'doctor'} demo</button><button onClick={() => { actions.resetDemo(); setProfileMenu(false); }}><RotateCcw size={15}/> Reset sample data</button></>}
           <button onClick={async () => { await actions.signOut(); change('/'); }}><LogOut size={15}/> Log out</button>
         </div>}
       </div></header>

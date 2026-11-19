@@ -6,6 +6,7 @@ export const firebaseSettings = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
 };
 export const requestedLive = import.meta.env.VITE_DEMO_MODE === 'false';
+export const APP_BASE_URL = (import.meta.env.VITE_APP_URL || '').trim().replace(/\/+$/, '');
 export const hasFirebaseConfiguration = Object.values(firebaseSettings).every(Boolean);
 export const DEMO_MODE = !requestedLive || !hasFirebaseConfiguration;
 export const CONFIG_ERROR = requestedLive && !hasFirebaseConfiguration;

@@ -71,11 +71,18 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (DEMO_MODE) return undefined;
-    return onAuthStateChanged(auth, (current) => {
-      setUser(current);
-      setLoading(false);
+    return onAuthStateChanged(auth, async (current) => {
+      setLoading(true);
       setError('');
-      if (!current) setData(emptyData);
+      if (!current) { setUser(null); setData(emptyData); setLoading(false); return; }
+      try {
+        const profile = await getDoc(doc(db, 'users', current.uid));
+        setUser((previous) => ({ uid: current.uid, email: current.email, displayName: current.displayName, emailVerified: current.emailVerified,
+          role: profile.exists() ? (profile.data().role === 'doctor' ? 'doctor' : 'patient') : previous?.uid === current.uid ? previous.role : 'patient' }));
+      } catch (e) {
+        setUser((previous) => ({ uid: current.uid, email: current.email, displayName: current.displayName, emailVerified: current.emailVerified, role: previous?.uid === current.uid ? previous.role : 'patient' }));
+        setError(readableError(e));
+      } finally { setLoading(false); }
     }, (e) => { setError(readableError(e)); setLoading(false); });
   }, []);
 
@@ -116,17 +123,18 @@ export function AppProvider({ children }) {
       try { await signInWithEmailAndPassword(auth, normalizeEmail(email), password); }
       catch (e) { throw new Error(readableError(e)); }
     },
-    signUp: async (name, email, password) => {
+    signUp: async (name, email, password, role = 'patient') => {
       setError('');
-      if (DEMO_MODE) { setUser(setDemoUser('patient')); notify('Demo account opened. No real account was created.'); return; }
+      const accountRole = role === 'doctor' ? 'doctor' : 'patient';
+      if (DEMO_MODE) { setUser(setDemoUser(accountRole)); notify('Demo account opened. No real account was created.'); return; }
       try {
         const credential = await createUserWithEmailAndPassword(auth, normalizeEmail(email), password);
         await updateProfile(credential.user, { displayName: name.trim() });
         await setDoc(doc(db, 'users', credential.user.uid), {
-          displayName: name.trim(), email: credential.user.email, createdAt: serverTimestamp()
+          displayName: name.trim(), email: credential.user.email, role: accountRole, createdAt: serverTimestamp()
         });
         await sendEmailVerification(credential.user);
-        setUser({ uid: credential.user.uid, email: credential.user.email, displayName: name.trim(), emailVerified: credential.user.emailVerified });
+        setUser({ uid: credential.user.uid, email: credential.user.email, displayName: name.trim(), emailVerified: credential.user.emailVerified, role: accountRole });
         notify('Account created. Verify your email before receiving shared files.');
       } catch (e) { throw new Error(readableError(e)); }
     },
@@ -139,7 +147,7 @@ export function AppProvider({ children }) {
       if (DEMO_MODE) return;
       await auth.currentUser.reload();
       await auth.currentUser.getIdToken(true);
-      setUser({ uid: auth.currentUser.uid, email: auth.currentUser.email, displayName: auth.currentUser.displayName, emailVerified: auth.currentUser.emailVerified });
+      setUser({ uid: auth.currentUser.uid, email: auth.currentUser.email, displayName: auth.currentUser.displayName, emailVerified: auth.currentUser.emailVerified, role: user?.role || 'patient' });
       notify(auth.currentUser.emailVerified ? 'Email verified.' : 'Email not verified yet. Check your inbox.');
     },
     signOut: async () => {
@@ -291,6 +299,14 @@ export function AppProvider({ children }) {
       const results = await Promise.all(ownedShares.map(async (share) => {
         const snap = await getDocs(collection(db, 'shares', share.id, 'views'));
         return snap.docs.map((d) => ({ id: d.id, shareId: share.id, readerEmail: share.recipientEmail, ...d.data() }));
+      }));
+      return results.flat();
+    },
+    loadRecipientActivity: async (receivedShares) => {
+      if (DEMO_MODE) return data.logs.filter((log) => receivedShares.some((s) => s.id === log.shareId));
+      const results = await Promise.all(receivedShares.map(async (share) => {
+        const snap = await getDocs(collection(db, 'shares', share.id, 'views'));
+        return snap.docs.map((d) => ({ ...d.data(), id: d.id, shareId: share.id }));
       }));
       return results.flat();
     }

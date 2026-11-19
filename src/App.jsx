@@ -6,6 +6,7 @@ import AppShell from './components/AppShell';
 import Landing from './pages/Landing';
 import AuthPage from './pages/Auth';
 import Dashboard from './pages/Dashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
 import Documents, { UploadModal } from './pages/Documents';
 import Prescriptions from './pages/Prescriptions';
 import Appointments from './pages/Appointments';
@@ -21,6 +22,9 @@ function App() {
     window.addEventListener('hashchange', changed);
     return () => window.removeEventListener('hashchange', changed);
   }, []);
+  useEffect(() => {
+    if (!user && path.startsWith('/app/')) sessionStorage.setItem('healthvault_post_auth_path', window.location.hash.slice(1));
+  }, [path, user]);
   const navigate = (destination) => {
     window.location.hash = `#${destination}`;
     setPath(destination);
@@ -34,13 +38,18 @@ function App() {
   else if (user) {
     const current = path.startsWith('/app/') ? path : '/app/dashboard';
     const pages = {
-      '/app/dashboard': <Dashboard navigate={navigate} startUpload={startUpload}/> ,
+      '/app/dashboard': user.role === 'doctor' ? <DoctorDashboard navigate={navigate}/> : <Dashboard navigate={navigate} startUpload={startUpload}/> ,
+      '/app/doctor/patients': <DoctorDashboard navigate={navigate} view="patients"/> ,
+      '/app/doctor/expiring': <DoctorDashboard navigate={navigate} view="expiring"/> ,
+      '/app/doctor/activity': <DoctorDashboard navigate={navigate} view="activity"/> ,
       '/app/documents': <Documents startUpload={startUpload}/> ,
       '/app/prescriptions': <Prescriptions/> ,
       '/app/appointments': <Appointments/> ,
       '/app/sharing': <Sharing/> ,
     };
-    content = <AppShell path={current} navigate={navigate}>{pages[current] || pages['/app/dashboard']}</AppShell>;
+    const doctorAllowed = ['/app/dashboard', '/app/sharing', '/app/doctor/patients', '/app/doctor/expiring', '/app/doctor/activity'];
+    const safeCurrent = user.role === 'doctor' && !doctorAllowed.includes(current) ? '/app/dashboard' : current;
+    content = <AppShell path={safeCurrent} navigate={navigate}>{pages[safeCurrent] || pages['/app/dashboard']}</AppShell>;
   } else content = <Landing navigate={navigate} onTryDemo={demoMode ? async()=>{await actions.signIn('patient@demo.healthvault','demo');navigate('/app/dashboard');}:null}/>;
   return <><Toast/>{content}{uploadOpen && <UploadModal onClose={()=>setUploadOpen(false)}/>}</>;
 }

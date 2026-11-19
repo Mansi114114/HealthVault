@@ -9,12 +9,17 @@ export default function AuthPage({ kind, navigate }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('patient');
   const [showPassword, setShowPassword] = useState(false);
   const submit = useSubmit();
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const ok = await submit.run(() => isSignup ? actions.signUp(name,email,password) : actions.signIn(email,password));
-    if (ok) navigate('/app/dashboard');
+    const ok = await submit.run(() => isSignup ? actions.signUp(name,email,password,role) : actions.signIn(email,password));
+    if (ok) {
+      const requestedPath = sessionStorage.getItem('healthvault_post_auth_path');
+      sessionStorage.removeItem('healthvault_post_auth_path');
+      navigate(requestedPath?.startsWith('/app/') ? requestedPath : '/app/dashboard');
+    }
   };
   const forgotPassword = () => submit.run(async () => { if (!email) throw new Error('Enter your email address first.'); await actions.resetPassword(email); });
   return <div className="auth-layout">
@@ -22,6 +27,7 @@ export default function AuthPage({ kind, navigate }) {
       <div className="auth-content"><h1>{isSignup ? 'Create your vault' : 'Welcome back'}</h1><p>{isSignup ? 'Make your health records easier to organize.' : 'Log in to your private health vault.'}</p>
         <form onSubmit={handleSubmit}>
           {isSignup && <FormField label="Full name"><input required type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Morgan" maxLength={80}/></FormField>}
+          {isSignup && <FormField label="Workspace"><select value={role} onChange={(e) => setRole(e.target.value)}><option value="patient">Patient</option><option value="doctor">Doctor</option></select><small>Choose which dashboard this account should use.</small></FormField>}
           <FormField label="Email"><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email"/></FormField>
           <FormField label="Password"><div className="password-wrap"><input required type={showPassword ? 'text' : 'password'} value={password} minLength={demoMode ? 1 : 6} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete={isSignup ? 'new-password' : 'current-password'}/><button type="button" aria-label={showPassword ? 'Hide password':'Show password'} onClick={() => setShowPassword((v)=>!v)}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></FormField>
           {!isSignup && <button className="forgot-link" type="button" onClick={forgotPassword}>Forgot password?</button>}

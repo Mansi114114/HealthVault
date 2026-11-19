@@ -31,7 +31,8 @@ service cloud.firestore {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list: if false;
       allow create: if signedIn() && request.auth.uid == userId &&
-        request.resource.data.email == request.auth.token.email;
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.role in ['patient', 'doctor'];
       allow update: if signedIn() && request.auth.uid == userId &&
         request.resource.data.email == resource.data.email &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
